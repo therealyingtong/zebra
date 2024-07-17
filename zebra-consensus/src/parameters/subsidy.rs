@@ -48,6 +48,9 @@ pub enum FundingStreamReceiver {
 
     /// The Major Grants (Zcash Community Grants) funding stream.
     MajorGrants,
+
+    /// The deferred pool contribution.
+    Deferred,
 }
 
 /// Denominator as described in [protocol specification §7.10.1][7.10.1].
@@ -72,18 +75,33 @@ lazy_static! {
         hash_map.insert(FundingStreamReceiver::Ecc, "Electric Coin Company");
         hash_map.insert(FundingStreamReceiver::ZcashFoundation, "Zcash Foundation");
         hash_map.insert(FundingStreamReceiver::MajorGrants, "Major Grants");
+        hash_map.insert(FundingStreamReceiver::Deferred, "Deferred Fund");
         hash_map
     };
 
 
-    /// The numerator for each funding stream receiver category
+    /// The numerator for each funding stream receiver category until NU6
     /// as described in [protocol specification §7.10.1][7.10.1].
     ///
     /// [7.10.1]: https://zips.z.cash/protocol/protocol.pdf#zip214fundingstreams
-    pub static ref FUNDING_STREAM_RECEIVER_NUMERATORS: HashMap<FundingStreamReceiver, u64> = {
+    pub static ref PRE_NU6_FUNDING_STREAM_RECEIVER_NUMERATORS: HashMap<FundingStreamReceiver, u64> = {
         let mut hash_map = HashMap::new();
         hash_map.insert(FundingStreamReceiver::Ecc, 7);
         hash_map.insert(FundingStreamReceiver::ZcashFoundation, 5);
+        hash_map.insert(FundingStreamReceiver::MajorGrants, 8);
+        hash_map
+    };
+
+    /// The numerator for each funding stream receiver category after NU6
+    /// as described in [protocol specification §7.10.1][7.10.1].
+    ///
+    /// [7.10.1]: https://zips.z.cash/protocol/protocol.pdf#zip214fundingstreams
+    pub static ref POST_NU6_FUNDING_STREAM_RECEIVER_NUMERATORS: HashMap<FundingStreamReceiver, u64> = {
+        let mut hash_map = HashMap::new();
+        hash_map.insert(FundingStreamReceiver::Deferred, 12);
+
+        // TODO: Remove MajorGrants if the full lockbox dev fund proposal is selected, or
+        //       add more funding stream addresses for MajorGrants on all networks if the hybrid proposal is selected.
         hash_map.insert(FundingStreamReceiver::MajorGrants, 8);
         hash_map
     };
@@ -95,6 +113,7 @@ lazy_static! {
     // TODO: Move the value here to a field on `testnet::Parameters` (#8367)
     pub static ref FUNDING_STREAM_HEIGHT_RANGES: HashMap<NetworkKind, std::ops::Range<Height>> = {
         let mut hash_map = HashMap::new();
+        // TODO: Adjust these values once a proposal is selected
         hash_map.insert(NetworkKind::Mainnet, Height(1_046_400)..Height(2_726_400));
         hash_map.insert(NetworkKind::Testnet, Height(1_028_500)..Height(2_796_000));
         hash_map.insert(NetworkKind::Regtest, Height(1_028_500)..Height(2_796_000));
@@ -144,6 +163,7 @@ pub const FUNDING_STREAM_ADDRESS_CHANGE_INTERVAL: HeightDiff = POST_BLOSSOM_HALV
 /// however we know this value beforehand so we prefer to make it a constant instead.
 ///
 /// [7.10]: https://zips.z.cash/protocol/protocol.pdf#fundingstreams
+// TODO: Update this once a dev fund proposal is selected.
 pub const FUNDING_STREAMS_NUM_ADDRESSES_MAINNET: usize = 48;
 
 /// List of addresses for the ECC funding stream in the Mainnet.
@@ -246,6 +266,7 @@ pub const FUNDING_STREAM_MG_ADDRESSES_MAINNET: [&str; FUNDING_STREAMS_NUM_ADDRES
 /// however we know this value beforehand so we prefer to make it a constant instead.
 ///
 /// [7.10]: https://zips.z.cash/protocol/protocol.pdf#fundingstreams
+// TODO: Update this once a dev fund proposal is selected.
 pub const FUNDING_STREAMS_NUM_ADDRESSES_TESTNET: usize = 51;
 
 /// List of addresses for the ECC funding stream in the Testnet.

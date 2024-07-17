@@ -15,7 +15,7 @@ use zebra_chain::{
     },
 };
 
-use crate::error::*;
+use crate::{error::*, FundingStreamReceiver};
 
 use super::subsidy;
 
@@ -193,8 +193,15 @@ pub fn subsidy_is_valid(block: &Block, network: &Network) -> Result<(), BlockErr
         //
         // https://zips.z.cash/protocol/protocol.pdf#fundingstreams
         for (receiver, expected_amount) in funding_streams {
-            let address =
-                subsidy::funding_streams::funding_stream_address(height, network, receiver);
+            if receiver == FundingStreamReceiver::Deferred {
+                // The deferred pool contribution is checked in `miner_fees_are_valid()`
+                continue;
+            }
+
+            let address = subsidy::funding_streams::funding_stream_address(
+                height, network, receiver,
+            )
+            .expect("funding stream receivers other than the deferred pool must have an address");
 
             let has_expected_output =
                 subsidy::funding_streams::filter_outputs_by_address(coinbase, &address)
@@ -236,6 +243,11 @@ pub fn miner_fees_are_valid(
     let block_subsidy = subsidy::general::block_subsidy(height, network)
         .expect("a valid block subsidy for this height and network");
 
+    let expected_deferred_amount = subsidy::funding_streams::funding_stream_values(height, network)
+        .expect("we always expect a funding stream hashmap response even if empty")
+        .remove(&FundingStreamReceiver::Deferred)
+        .unwrap_or_default();
+
     // # Consensus
     //
     // > The total value in zatoshi of transparent outputs from a coinbase transaction,
@@ -245,9 +257,17 @@ pub fn miner_fees_are_valid(
     // https://zips.z.cash/protocol/protocol.pdf#txnconsensus
     let left = (transparent_value_balance - sapling_value_balance - orchard_value_balance)
         .map_err(|_| SubsidyError::SumOverflow)?;
-    let right = (block_subsidy + block_miner_fees).map_err(|_| SubsidyError::SumOverflow)?;
+    let right = (block_subsidy + block_miner_fees - expected_deferred_amount)
+        .map_err(|_| SubsidyError::SumOverflow)?;
 
-    if left > right {
+    let should_allow_unclaimed_subsidy =
+        NetworkUpgrade::current(network, height) <= NetworkUpgrade::Nu5;
+
+    if if should_allow_unclaimed_subsidy {
+        left > right
+    } else {
+        left != right
+    } {
         Err(SubsidyError::InvalidMinerFees)?;
     }
 

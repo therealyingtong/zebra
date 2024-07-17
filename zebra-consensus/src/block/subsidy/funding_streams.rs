@@ -7,7 +7,10 @@ use std::{collections::HashMap, str::FromStr};
 use zebra_chain::{
     amount::{Amount, Error, NonNegative},
     block::Height,
-    parameters::{Network, NetworkUpgrade::*},
+    parameters::{
+        Network,
+        NetworkUpgrade::{self, *},
+    },
     transaction::Transaction,
     transparent::{self, Script},
 };
@@ -25,14 +28,20 @@ pub fn funding_stream_values(
     height: Height,
     network: &Network,
 ) -> Result<HashMap<FundingStreamReceiver, Amount<NonNegative>>, Error> {
-    let canopy_height = Canopy.activation_height(network).unwrap();
+    let current_network_upgrade = NetworkUpgrade::current(network, height);
     let mut results = HashMap::new();
 
-    if height >= canopy_height {
+    if current_network_upgrade >= Canopy {
         let range = FUNDING_STREAM_HEIGHT_RANGES.get(&network.kind()).unwrap();
         if range.contains(&height) {
             let block_subsidy = block_subsidy(height, network)?;
-            for (&receiver, &numerator) in FUNDING_STREAM_RECEIVER_NUMERATORS.iter() {
+            let funding_stream_numerators = if current_network_upgrade <= Nu5 {
+                PRE_NU6_FUNDING_STREAM_RECEIVER_NUMERATORS.iter()
+            } else {
+                POST_NU6_FUNDING_STREAM_RECEIVER_NUMERATORS.iter()
+            };
+
+            for (&receiver, &numerator) in funding_stream_numerators {
                 // - Spec equation: `fs.value = floor(block_subsidy(height)*(fs.numerator/fs.denominator))`:
                 //   https://zips.z.cash/protocol/protocol.pdf#subsidies
                 // - In Rust, "integer division rounds towards zero":
@@ -105,14 +114,14 @@ pub fn funding_stream_address(
     height: Height,
     network: &Network,
     receiver: FundingStreamReceiver,
-) -> transparent::Address {
+) -> Option<transparent::Address> {
     let index = funding_stream_address_index(height, network);
     let address = &FUNDING_STREAM_ADDRESSES
         .get(&network.kind())
         .expect("there is always another hash map as value for a given valid network")
-        .get(&receiver)
-        .expect("in the inner hash map there is always a vector of strings with addresses")[index];
-    transparent::Address::from_str(address).expect("address should deserialize")
+        .get(&receiver)?
+        .get(index)?;
+    Some(transparent::Address::from_str(address).expect("address should deserialize"))
 }
 
 /// Return a human-readable name and a specification URL for the funding stream `receiver`.
