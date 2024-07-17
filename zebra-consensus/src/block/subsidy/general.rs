@@ -7,7 +7,10 @@ use std::collections::HashSet;
 use zebra_chain::{
     amount::{Amount, Error, NonNegative},
     block::{Height, HeightDiff},
-    parameters::{Network, NetworkUpgrade::*},
+    parameters::{
+        Network,
+        NetworkUpgrade::{self, *},
+    },
     transaction::Transaction,
 };
 
@@ -106,6 +109,40 @@ pub fn miner_subsidy(height: Height, network: &Network) -> Result<Amount<NonNega
         funding_stream_values(height, network)?.values().sum();
 
     block_subsidy(height, network)? - total_funding_stream_amount?
+}
+
+/// Lockbox funding stream total input value for a block height.
+///
+/// Assumes a constant funding stream amount per block.
+// TODO: Cache the lockbox value balance in zebra-state (will be required for tracking lockbox
+//       value balance after ZSF ZIPs or after a ZIP for spending from the deferred pool)
+#[allow(dead_code)]
+fn lockbox_input_value(network: &Network, height: Height) -> Amount<NonNegative> {
+    let Some(nu6_activation_height) = NetworkUpgrade::Nu6.activation_height(network) else {
+        return Amount::zero();
+    };
+
+    let &deferred_amount_per_block = funding_stream_values(nu6_activation_height, network)
+        .expect("we always expect a funding stream hashmap response even if empty")
+        .get(&FundingStreamReceiver::Deferred)
+        .expect("we expect a lockbox funding stream after NU5");
+
+    let funding_stream_height_range = FUNDING_STREAM_HEIGHT_RANGES
+        .get(&network.kind())
+        .expect("must have funding stream height range on all networks");
+
+    // `min(height, last_height_with_deferred_pool_contribution) - (nu6_activation_height - 1)`,
+    // funding stream height range end bound is not incremented since it's an exclusive end bound
+    let num_blocks_with_lockbox_output = height
+        .next()
+        .expect("should be a valid height")
+        .min(funding_stream_height_range.end)
+        - nu6_activation_height;
+
+    (deferred_amount_per_block
+        * u64::try_from(num_blocks_with_lockbox_output)
+            .expect("num blocks with lockbox funding stream should fit in u64"))
+    .expect("lockbox input value should fit in Amount")
 }
 
 /// Returns all output amounts in `Transaction`.

@@ -35,7 +35,7 @@ pub fn funding_stream_values(
         let range = FUNDING_STREAM_HEIGHT_RANGES.get(&network.kind()).unwrap();
         if range.contains(&height) {
             let block_subsidy = block_subsidy(height, network)?;
-            let funding_stream_numerators = if current_network_upgrade <= Nu5 {
+            let funding_stream_numerators = if current_network_upgrade < Nu6 {
                 PRE_NU6_FUNDING_STREAM_RECEIVER_NUMERATORS.iter()
             } else {
                 POST_NU6_FUNDING_STREAM_RECEIVER_NUMERATORS.iter()

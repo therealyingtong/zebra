@@ -261,7 +261,7 @@ pub fn miner_fees_are_valid(
         .map_err(|_| SubsidyError::SumOverflow)?;
 
     let should_allow_unclaimed_subsidy =
-        NetworkUpgrade::current(network, height) <= NetworkUpgrade::Nu5;
+        NetworkUpgrade::current(network, height) < NetworkUpgrade::Nu6;
 
     if if should_allow_unclaimed_subsidy {
         left > right
