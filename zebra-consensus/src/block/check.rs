@@ -150,7 +150,7 @@ pub fn subsidy_is_valid(block: &Block, network: &Network) -> Result<(), BlockErr
     // Validate funding streams
 
     // Future halving, with no founders reward or funding streams
-    if subsidy::general::halving_index(height, network) > 2 {
+    if subsidy::general::num_halvings(height, network) > 2 {
         return Ok(());
     };
 

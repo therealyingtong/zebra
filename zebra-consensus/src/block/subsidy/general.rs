@@ -21,7 +21,7 @@ use crate::{funding_stream_values, parameters::subsidy::*};
 /// `Halving(height)`, as described in [protocol specification §7.8][7.8]
 ///
 /// [7.8]: https://zips.z.cash/protocol/protocol.pdf#subsidies
-pub fn halving_index(height: Height, network: &Network) -> u32 {
+pub fn num_halvings(height: Height, network: &Network) -> u32 {
     let slow_start_shift = network.slow_start_shift();
     let blossom_height = Blossom
         .activation_height(network)
@@ -56,7 +56,7 @@ pub fn halving_index(height: Height, network: &Network) -> u32 {
 /// Returns `None` if the divisor would overflow a `u64`.
 pub fn halving_divisor(height: Height, network: &Network) -> Option<u64> {
     // Some far-future shifts can be more than 63 bits
-    1u64.checked_shl(halving_index(height, network))
+    1u64.checked_shl(num_halvings(height, network))
 }
 
 /// `BlockSubsidy(height)` as described in [protocol specification §7.8][7.8]
