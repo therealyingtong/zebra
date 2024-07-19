@@ -44,7 +44,9 @@ fn test_funding_stream_values() -> Result<(), Report> {
     );
 
     // funding stream period is ending
-    let range = FUNDING_STREAM_HEIGHT_RANGES.get(&network.kind()).unwrap();
+    let range = PRE_NU6_FUNDING_STREAM_HEIGHT_RANGES
+        .get(&network.kind())
+        .unwrap();
     let end = range.end;
     let last = end - 1;
 

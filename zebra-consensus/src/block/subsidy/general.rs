@@ -119,22 +119,20 @@ fn lockbox_input_value(network: &Network, height: Height) -> Amount<NonNegative>
         .get(&FundingStreamReceiver::Deferred)
         .expect("we expect a lockbox funding stream after NU5");
 
-    let funding_stream_height_range = FUNDING_STREAM_HEIGHT_RANGES
+    let funding_stream_height_range = POST_NU6_FUNDING_STREAM_HEIGHT_RANGES
         .get(&network.kind())
         .expect("must have funding stream height range on all networks");
 
     // `min(height, last_height_with_deferred_pool_contribution) - (nu6_activation_height - 1)`,
-    // funding stream height range end bound is not incremented since it's an exclusive end bound
-    let num_blocks_with_lockbox_output = height
-        .next()
-        .expect("should be a valid height")
-        .min(funding_stream_height_range.end)
-        - nu6_activation_height;
+    // We decrement NU6 activation height since it's an inclusive lower bound.
+    // Funding stream height range end bound is not incremented since it's an exclusive end bound
+    let num_blocks_with_lockbox_output = (height.0 + 1)
+        .min(funding_stream_height_range.end.0)
+        .checked_sub(nu6_activation_height.0)
+        .unwrap_or_default();
 
-    (deferred_amount_per_block
-        * u64::try_from(num_blocks_with_lockbox_output)
-            .expect("num blocks with lockbox funding stream should fit in u64"))
-    .expect("lockbox input value should fit in Amount")
+    (deferred_amount_per_block * num_blocks_with_lockbox_output.into())
+        .expect("lockbox input value should fit in Amount")
 }
 
 /// Returns all output amounts in `Transaction`.

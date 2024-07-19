@@ -106,12 +106,12 @@ lazy_static! {
         hash_map
     };
 
-    /// Start and end Heights for funding streams
+    /// Start and end Heights for pre-NU6 funding streams
     /// as described in [protocol specification §7.10.1][7.10.1].
     ///
     /// [7.10.1]: https://zips.z.cash/protocol/protocol.pdf#zip214fundingstreams
     // TODO: Move the value here to a field on `testnet::Parameters` (#8367)
-    pub static ref FUNDING_STREAM_HEIGHT_RANGES: HashMap<NetworkKind, std::ops::Range<Height>> = {
+    pub static ref PRE_NU6_FUNDING_STREAM_HEIGHT_RANGES: HashMap<NetworkKind, std::ops::Range<Height>> = {
         let mut hash_map = HashMap::new();
         // TODO: Adjust these values once a proposal is selected
         hash_map.insert(NetworkKind::Mainnet, Height(1_046_400)..Height(2_726_400));
@@ -119,6 +119,21 @@ lazy_static! {
         hash_map.insert(NetworkKind::Regtest, Height(1_028_500)..Height(2_796_000));
         hash_map
     };
+
+    /// Start and end Heights for post-NU6 funding streams
+    /// as described in [protocol specification §7.10.1][7.10.1].
+    ///
+    /// [7.10.1]: https://zips.z.cash/protocol/protocol.pdf#zip214fundingstreams
+    // TODO: Move the value here to a field on `testnet::Parameters` (#8367)
+    pub static ref POST_NU6_FUNDING_STREAM_HEIGHT_RANGES: HashMap<NetworkKind, std::ops::Range<Height>> = {
+        let mut hash_map = HashMap::new();
+        // TODO: Adjust these values once a proposal is selected
+        hash_map.insert(NetworkKind::Mainnet, Height(2_726_400)..Height(3_146_400));
+        hash_map.insert(NetworkKind::Testnet, Height(2_942_000)..Height(3_362_000));
+        hash_map.insert(NetworkKind::Regtest, Height(2_942_000)..Height(3_362_000));
+        hash_map
+    };
+
 
     /// Convenient storage for all addresses, for all receivers and networks
     pub static ref FUNDING_STREAM_ADDRESSES: HashMap<NetworkKind, HashMap<FundingStreamReceiver, Vec<String>>> = {

@@ -32,10 +32,20 @@ pub fn funding_stream_values(
     let mut results = HashMap::new();
 
     if current_network_upgrade >= Canopy {
-        let range = FUNDING_STREAM_HEIGHT_RANGES.get(&network.kind()).unwrap();
+        let is_pre_nu6 = current_network_upgrade < Nu6;
+        let range = if is_pre_nu6 {
+            PRE_NU6_FUNDING_STREAM_HEIGHT_RANGES
+                .get(&network.kind())
+                .unwrap()
+        } else {
+            POST_NU6_FUNDING_STREAM_HEIGHT_RANGES
+                .get(&network.kind())
+                .unwrap()
+        };
+
         if range.contains(&height) {
             let block_subsidy = block_subsidy(height, network)?;
-            let funding_stream_numerators = if current_network_upgrade < Nu6 {
+            let funding_stream_numerators = if is_pre_nu6 {
                 PRE_NU6_FUNDING_STREAM_RECEIVER_NUMERATORS.iter()
             } else {
                 POST_NU6_FUNDING_STREAM_RECEIVER_NUMERATORS.iter()
@@ -87,17 +97,21 @@ fn funding_stream_address_period(height: Height, network: &Network) -> u32 {
 /// [7.10]: https://zips.z.cash/protocol/protocol.pdf#fundingstreams
 fn funding_stream_address_index(height: Height, network: &Network) -> usize {
     let num_addresses = network.num_funding_streams();
+    let is_pre_nu6 = NetworkUpgrade::current(network, height) < Nu6;
+    let range = if is_pre_nu6 {
+        PRE_NU6_FUNDING_STREAM_HEIGHT_RANGES
+            .get(&network.kind())
+            .unwrap()
+    } else {
+        POST_NU6_FUNDING_STREAM_HEIGHT_RANGES
+            .get(&network.kind())
+            .unwrap()
+    };
 
     let index = 1u32
         .checked_add(funding_stream_address_period(height, network))
         .expect("no overflow should happen in this sum")
-        .checked_sub(funding_stream_address_period(
-            FUNDING_STREAM_HEIGHT_RANGES
-                .get(&network.kind())
-                .unwrap()
-                .start,
-            network,
-        ))
+        .checked_sub(funding_stream_address_period(range.start, network))
         .expect("no overflow should happen in this sub") as usize;
 
     assert!(index > 0 && index <= num_addresses);

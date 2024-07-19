@@ -247,6 +247,7 @@ pub fn miner_fees_are_valid(
     if if should_allow_unclaimed_subsidy {
         left > right
     } else {
+        // TODO: Document the need for claiming all subsidy once the ZIP for NU6 is out.
         left != right
     } {
         Err(SubsidyError::InvalidMinerFees)?;
